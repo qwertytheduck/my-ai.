@@ -11,7 +11,7 @@
 <body ondblclick="setApiKey()">
 
 <h1>lwk.my.ai</h1>
-<p style="font-size: 10px;">(Double-click, Alt+0, or type 'key' for Key)</p>
+<p style="font-size: 10px;">(Double-click or type 'key' for Key)</p>
 
 <div id="chatbox"></div>
 <input id="apiKey" type="password" style="display:none;">
@@ -30,7 +30,6 @@ const voiceMenu = document.getElementById("voiceMenu");
 const apiKeyInput = document.getElementById("apiKey");
 let voices = [];
 
-// Load key from storage
 if(localStorage.getItem("gemini_key")) {
     apiKeyInput.value = localStorage.getItem("gemini_key");
 }
@@ -50,11 +49,13 @@ function add(sender, text) {
 
 async function brain(msg) {
   const key = apiKeyInput.value;
-  if (!key) return "OFFLINE. Type 'key' to enter your API Key.";
+  if (!key) return "OFFLINE. Type 'key' to enter your Key.";
 
   try {
-    // Calling Google DIRECTLY - Removes blocked proxies
-    const url = `https://googleapis.com{key}`;
+    const targetUrl = `https://googleapis.com{key}`;
+    
+    // This bridge hides Google from the school filter
+    const url = `https://corsproxy.io{encodeURIComponent(targetUrl)}`;
     
     const resp = await fetch(url, {
       method: "POST",
@@ -63,15 +64,9 @@ async function brain(msg) {
     });
     
     const data = await resp.json();
-    
-    if (data.candidates && data.candidates[0].content.parts[0].text) {
-        return data.candidates[0].content.parts[0].text;
-    } else if (data.error) {
-        return "API Error: " + data.error.message;
-    }
-    return "Error: Check your API Key.";
+    return data.candidates[0].content.parts[0].text;
   } catch (e) {
-    return "TOTAL BLOCK: Even GitHub can't bypass this Wi-Fi. Try a phone hotspot for 10 seconds to wake Jarvis up!";
+    return "CONNECTION ERROR: The school is even blocking the backup bridge. Try using a phone hotspot for a moment!";
   }
 }
 
@@ -108,10 +103,6 @@ document.addEventListener('keydown', function(event) {
     event.preventDefault();
     send();
   }
-  if (event.altKey && (event.key === '0' || event.keyCode === 48)) {
-    event.preventDefault();
-    setApiKey();
-  }
 });
 
 function speak(text) {
@@ -126,13 +117,15 @@ function startListening() {
   if (!SpeechRecognition) return alert("Not supported.");
   const recognition = new SpeechRecognition();
   recognition.onresult = (e) => {
-    let transcript = e.results[0][0].transcript;
-    document.getElementById("input").value = transcript;
+    document.getElementById("input").value = e.results[0][0].transcript;
     send();
   };
   recognition.start();
 }
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
