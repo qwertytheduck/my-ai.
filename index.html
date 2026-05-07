@@ -1,6 +1,7 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
+  <title>Lwk.My.ai</title>
   <style>
     body { background: black; color: lime; font-family: monospace; text-align: center; margin:0; padding:20px; }
     #chatbox { height: 340px; overflow-y: auto; border: 4px solid lime; padding: 10px; margin: 10px auto; text-align: left; max-width: 600px; }
@@ -9,20 +10,19 @@
 </head>
 <body ondblclick="setApiKey()">
 
-
 <h1>lwk.my.ai</h1>
+<p style="font-size: 10px;">(Double-click, Alt+0, or type 'key' for Key)</p>
+
 <div id="chatbox"></div>
 <input id="apiKey" type="password" style="display:none;">
 
-
 <label for="voiceMenu">Voice:</label>
-<select id="voiceMenu"><option value="">Loading...</option></select><br>
+<select id="voiceMenu"><option value="">Loading...</option></select>
+<br>
 
-
-<input id="input" placeholder="Type 'key' or message...">
+<input id="input" placeholder="Type here...">
 <button onclick="send()">Send</button>
 <button onclick="startListening()">🎤 Talk</button>
-
 
 <script>
 const synth = window.speechSynthesis;
@@ -30,18 +30,17 @@ const voiceMenu = document.getElementById("voiceMenu");
 const apiKeyInput = document.getElementById("apiKey");
 let voices = [];
 
-
+// Load key from storage
 if(localStorage.getItem("gemini_key")) {
     apiKeyInput.value = localStorage.getItem("gemini_key");
 }
-
 
 function populateVoiceList() {
   voices = synth.getVoices();
   voiceMenu.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('');
 }
 if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = populateVoiceList;
-
+populateVoiceList();
 
 function add(sender, text) {
   const chat = document.getElementById("chatbox");
@@ -49,44 +48,37 @@ function add(sender, text) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-
 async function brain(msg) {
   const key = apiKeyInput.value;
-  if (!key) return "OFFLINE. Type 'key' to enter your Key.";
-
+  if (!key) return "OFFLINE. Type 'key' to enter your API Key.";
 
   try {
-    const targetUrl = `https://googleapis.com{key}`;
+    // Calling Google DIRECTLY - Removes blocked proxies
+    const url = `https://googleapis.com{key}`;
     
-    // NEW BRIDGE: corsproxy.io is often unblocked in schools
-    const proxyUrl = `https://corsproxy.io{encodeURIComponent(targetUrl)}`;
-    
-    const resp = await fetch(proxyUrl, {
+    const resp = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ contents: [{ parts: [{ text: msg }] }] })
     });
     
     const data = await resp.json();
-
-
-    if (data.candidates && data.candidates.content.parts.length > 0) {
-        return data.candidates.content.parts.text;
+    
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+        return data.candidates[0].content.parts[0].text;
     } else if (data.error) {
         return "API Error: " + data.error.message;
     }
-    return "Check your key.";
+    return "Error: Check your API Key.";
   } catch (e) {
-    return "STILL BLOCKED. The school has blocked this proxy too. Try using a phone hotspot for 10 seconds to send the message.";
+    return "TOTAL BLOCK: Even GitHub can't bypass this Wi-Fi. Try a phone hotspot for 10 seconds to wake Jarvis up!";
   }
 }
-
 
 async function send() {
   let input = document.getElementById("input");
   let msg = input.value.trim();
   if (!msg) return;
-
 
   if (msg.toLowerCase() === 'key') {
     setApiKey();
@@ -94,14 +86,13 @@ async function send() {
     return;
   }
 
-
   add("You", msg);
   input.value = "";
+  
   const response = await brain(msg);
   add("Jarvis", response);
   speak(response);
 }
-
 
 function setApiKey() {
   let key = prompt("Paste your Gemini API Key:");
@@ -112,12 +103,16 @@ function setApiKey() {
   }
 }
 
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.code === 'AltRight') { e.preventDefault(); send(); }
-  if (e.altKey && e.key === '0') { e.preventDefault(); setApiKey(); }
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Enter' || event.code === 'AltRight') {
+    event.preventDefault();
+    send();
+  }
+  if (event.altKey && (event.key === '0' || event.keyCode === 48)) {
+    event.preventDefault();
+    setApiKey();
+  }
 });
-
 
 function speak(text) {
   if (synth.speaking) synth.cancel();
@@ -126,14 +121,18 @@ function speak(text) {
   synth.speak(speech);
 }
 
-
 function startListening() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return;
-  const rec = new SpeechRecognition();
-  rec.onresult = (e) => { document.getElementById("input").value = e.results.transcript; send(); };
-  rec.start();
+  if (!SpeechRecognition) return alert("Not supported.");
+  const recognition = new SpeechRecognition();
+  recognition.onresult = (e) => {
+    let transcript = e.results[0][0].transcript;
+    document.getElementById("input").value = transcript;
+    send();
+  };
+  recognition.start();
 }
 </script>
+
 </body>
 </html>
