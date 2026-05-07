@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { background: black; color: lime; font-family: monospace; text-align: center; margin:0; padding:20px; }
+    #chatbox { height: 340px; overflow-y: auto; border: 4px solid lime; padding: 10px; margin: 10px auto; text-align: left; max-width: 600px; }
+    input, button, select { padding: 10px; margin: 5px; font-size: 14px; background: #222; color: lime; border: 1px solid lime; }
+  </style>
+</head>
+<body ondblclick="setApiKey()">
+
+
+<h1>lwk.my.ai</h1>
+<div id="chatbox"></div>
+<input id="apiKey" type="password" style="display:none;">
+
+
+<label for="voiceMenu">Voice:</label>
+<select id="voiceMenu"><option value="">Loading...</option></select><br>
+
+
+<input id="input" placeholder="Type 'key' or message...">
+<button onclick="send()">Send</button>
+<button onclick="startListening()">🎤 Talk</button>
+
+
+<script>
+const synth = window.speechSynthesis;
+const voiceMenu = document.getElementById("voiceMenu");
+const apiKeyInput = document.getElementById("apiKey");
+let voices = [];
+
+
+if(localStorage.getItem("gemini_key")) {
+    apiKeyInput.value = localStorage.getItem("gemini_key");
+}
+
+
+function populateVoiceList() {
+  voices = synth.getVoices();
+  voiceMenu.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('');
+}
+if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = populateVoiceList;
+
+
+function add(sender, text) {
+  const chat = document.getElementById("chatbox");
+  chat.innerHTML += `<p><b>${sender}:</b> ${text}</p>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+
+
+async function brain(msg) {
+  const key = apiKeyInput.value;
+  if (!key) return "OFFLINE. Type 'key' to enter your Key.";
+
+
+  try {
+    const targetUrl = `https://googleapis.com{key}`;
+    
+    // NEW BRIDGE: corsproxy.io is often unblocked in schools
+    const proxyUrl = `https://corsproxy.io{encodeURIComponent(targetUrl)}`;
+    
+    const resp = await fetch(proxyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: msg }] }] })
+    });
+    
+    const data = await resp.json();
+
+
+    if (data.candidates && data.candidates.content.parts.length > 0) {
+        return data.candidates.content.parts.text;
+    } else if (data.error) {
+        return "API Error: " + data.error.message;
+    }
+    return "Check your key.";
+  } catch (e) {
+    return "STILL BLOCKED. The school has blocked this proxy too. Try using a phone hotspot for 10 seconds to send the message.";
+  }
+}
+
+
+async function send() {
+  let input = document.getElementById("input");
+  let msg = input.value.trim();
+  if (!msg) return;
+
+
+  if (msg.toLowerCase() === 'key') {
+    setApiKey();
+    input.value = "";
+    return;
+  }
+
+
+  add("You", msg);
+  input.value = "";
+  const response = await brain(msg);
+  add("Jarvis", response);
+  speak(response);
+}
+
+
+function setApiKey() {
+  let key = prompt("Paste your Gemini API Key:");
+  if (key) {
+    apiKeyInput.value = key;
+    localStorage.setItem("gemini_key", key);
+    alert("Key Saved!");
+  }
+}
+
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.code === 'AltRight') { e.preventDefault(); send(); }
+  if (e.altKey && e.key === '0') { e.preventDefault(); setApiKey(); }
+});
+
+
+function speak(text) {
+  if (synth.speaking) synth.cancel();
+  let speech = new SpeechSynthesisUtterance(text);
+  if (voiceMenu.value !== "") speech.voice = voices[voiceMenu.value];
+  synth.speak(speech);
+}
+
+
+function startListening() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
+  const rec = new SpeechRecognition();
+  rec.onresult = (e) => { document.getElementById("input").value = e.results.transcript; send(); };
+  rec.start();
+}
+</script>
+</body>
+</html>
