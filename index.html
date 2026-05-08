@@ -1,128 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Lwk.My.ai</title>
-  <style>
-    body { background: black; color: lime; font-family: monospace; text-align: center; margin:0; padding:20px; }
-    #chatbox { height: 340px; overflow-y: auto; border: 4px solid lime; padding: 10px; margin: 10px auto; text-align: left; max-width: 600px; }
-    input, button, select { padding: 10px; margin: 5px; font-size: 14px; background: #222; color: lime; border: 1px solid lime; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Google Docs</title>
+    <link rel="icon" href="https://gstatic.com">
+    <style>
+        body { background: #000; color: #00d4ff; font-family: 'Courier New', monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+        #terminal { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 1.2rem; }
+        #controls { background: #080808; border-top: 2px solid #00d4ff; padding: 15px; }
+        input { background: #000; border: 2px solid #00d4ff; color: #00d4ff; padding: 15px; width: 100%; outline: none; border-radius: 10px; font-size: 1.1rem; }
+        .user-txt { color: #fff; align-self: flex-end; background: #111; padding: 10px; border-radius: 8px; border-right: 4px solid #fff; max-width: 80%; text-align: right; }
+        .jarvis-txt { color: #00d4ff; align-self: flex-start; border-left: 4px solid #00d4ff; padding-left: 10px; line-height: 1.4; max-width: 90%; }
+        .err-msg { color: #ff3333; font-size: 0.9rem; border-left: 4px solid #ff3333; padding-left: 10px; }
+    </style>
 </head>
-<body ondblclick="setApiKey()">
-
-<h1>lwk.my.ai</h1>
-<p style="font-size: 10px;">(Double-click or type 'key' for Key)</p>
-
-<div id="chatbox"></div>
-<input id="apiKey" type="password" style="display:none;">
-
-<label for="voiceMenu">Voice:</label>
-<select id="voiceMenu"><option value="">Loading...</option></select>
-<br>
-
-<input id="input" placeholder="Type here...">
-<button onclick="send()">Send</button>
-<button onclick="startListening()">🎤 Talk</button>
+<body>
+<div id="terminal"><span class="jarvis-txt">[SYSTEM]: UPLINK STABILIZED. DISGUISE: ACTIVE.</span></div>
+<div id="controls">
+    <input type="password" id="api-key" placeholder="PASTE KEY" style="display:none; margin-bottom:10px;">
+    <input type="text" id="user-input" placeholder="COMMAND..." autocomplete="off">
+</div>
 
 <script>
-const synth = window.speechSynthesis;
-const voiceMenu = document.getElementById("voiceMenu");
-const apiKeyInput = document.getElementById("apiKey");
-let voices = [];
+    const term = document.getElementById('terminal'), uInp = document.getElementById('user-input'), aInp = document.getElementById('api-key');
+    let history = [];
 
-if(localStorage.getItem("gemini_key")) {
-    apiKeyInput.value = localStorage.getItem("gemini_key");
-}
+    function log(msg, type = 'jarvis') {
+        const div = document.createElement('div');
+        div.className = (type === 'err') ? 'err-msg' : type + '-txt';
+        div.innerText = (type === 'user' ? '' : '[JARVIS]: ') + msg;
+        term.appendChild(div);
+        term.scrollTop = term.scrollHeight;
+    }
 
-function populateVoiceList() {
-  voices = synth.getVoices();
-  voiceMenu.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name}</option>`).join('');
-}
-if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = populateVoiceList;
-populateVoiceList();
+    [uInp, aInp].forEach(el => {
+        el.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const val = el.value.trim();
+                if (!val) return;
+                if (el === aInp) { aInp.style.display = 'none'; log("Uplink secured."); return; }
+                
+                el.value = '';
+                if (val.toLowerCase() === 'key') { aInp.style.display = 'block'; return; }
+                
+                log(val, 'user');
+                const key = aInp.value.trim();
+                if (!key) { log("Key Required. Type 'key'.", "err"); return; }
 
-function add(sender, text) {
-  const chat = document.getElementById("chatbox");
-  chat.innerHTML += `<p><b>${sender}:</b> ${text}</p>`;
-  chat.scrollTop = chat.scrollHeight;
-}
+                history.push({ role: "user", parts: [{ text: val }] });
 
-async function brain(msg) {
-  const key = apiKeyInput.value;
-  if (!key) return "OFFLINE. Type 'key' to enter your Key.";
+                try {
+                    // Corrected Proxy and API logic
+                    const target = `https://googleapis.com{key}`;
+                    const proxy = `https://allorigins.win{encodeURIComponent(target)}`;
 
-  try {
-    const targetUrl = `https://googleapis.com{key}`;
-    
-    // This bridge hides Google from the school filter
-    const url = `https://corsproxy.io{encodeURIComponent(targetUrl)}`;
-    
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: msg }] }] })
+                    const response = await fetch(proxy, {
+                        method: 'POST',
+                        body: JSON.stringify({ contents: history })
+                    });
+
+                    const outerData = await response.json();
+                    const data = JSON.parse(outerData.contents);
+                    
+                    // FIXED: Correct indexing [0] for candidates and parts
+                    if (data.candidates && data.candidates[0].content) {
+                        const aiText = data.candidates[0].content.parts[0].text;
+                        log(aiText, 'jarvis');
+                        history.push({ role: "model", parts: [{ text: aiText }] });
+                        if (history.length > 12) history = history.slice(-8);
+                    } else {
+                        log("API Error: Check your key or internet.", "err");
+                    }
+                } catch (err) {
+                    log("Network blocked. Try a different Wi-Fi or key.", "err");
+                }
+            }
+        });
     });
-    
-    const data = await resp.json();
-    return data.candidates[0].content.parts[0].text;
-  } catch (e) {
-    return "CONNECTION ERROR: The school is even blocking the backup bridge. Try using a phone hotspot for a moment!";
-  }
-}
-
-async function send() {
-  let input = document.getElementById("input");
-  let msg = input.value.trim();
-  if (!msg) return;
-
-  if (msg.toLowerCase() === 'key') {
-    setApiKey();
-    input.value = "";
-    return;
-  }
-
-  add("You", msg);
-  input.value = "";
-  
-  const response = await brain(msg);
-  add("Jarvis", response);
-  speak(response);
-}
-
-function setApiKey() {
-  let key = prompt("Paste your Gemini API Key:");
-  if (key) {
-    apiKeyInput.value = key;
-    localStorage.setItem("gemini_key", key);
-    alert("Key Saved!");
-  }
-}
-
-document.addEventListener('keydown', function(event) {
-  if (event.key === 'Enter' || event.code === 'AltRight') {
-    event.preventDefault();
-    send();
-  }
-});
-
-function speak(text) {
-  if (synth.speaking) synth.cancel();
-  let speech = new SpeechSynthesisUtterance(text);
-  if (voiceMenu.value !== "") speech.voice = voices[voiceMenu.value];
-  synth.speak(speech);
-}
-
-function startListening() {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return alert("Not supported.");
-  const recognition = new SpeechRecognition();
-  recognition.onresult = (e) => {
-    document.getElementById("input").value = e.results[0][0].transcript;
-    send();
-  };
-  recognition.start();
-}
 </script>
-
 </body>
 </html>
