@@ -7,7 +7,7 @@
     <style>
         body { background: #000; color: #00d4ff; font-family: 'Courier New', monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
         #terminal { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 1.2rem; }
-        #controls { background: #080808; border-top: 2px solid #00d4ff; padding: 15px; }
+        #controls { background: #080808; border-top: 2px solid #00d4ff; padding: 15px; padding-bottom: 25px; }
         input { background: #000; border: 2px solid #00d4ff; color: #00d4ff; padding: 15px; width: 100%; outline: none; border-radius: 10px; font-size: 1.1rem; }
         .user-txt { color: #fff; align-self: flex-end; background: #111; padding: 10px; border-radius: 8px; border-right: 4px solid #fff; max-width: 80%; text-align: right; }
         .jarvis-txt { color: #00d4ff; align-self: flex-start; border-left: 4px solid #00d4ff; padding-left: 10px; line-height: 1.4; max-width: 90%; }
@@ -15,7 +15,7 @@
     </style>
 </head>
 <body>
-<div id="terminal"><span class="jarvis-txt">[SYSTEM]: UPLINK STABILIZED. DISGUISE: ACTIVE.</span></div>
+<div id="terminal"><span class="jarvis-txt">[SYSTEM]: BRIDGE UPLINK ACTIVE. DISGUISE: ENABLED.</span></div>
 <div id="controls">
     <input type="password" id="api-key" placeholder="PASTE KEY" style="display:none; margin-bottom:10px;">
     <input type="text" id="user-input" placeholder="COMMAND..." autocomplete="off">
@@ -38,41 +38,39 @@
             if (e.key === 'Enter') {
                 const val = el.value.trim();
                 if (!val) return;
-                if (el === aInp) { aInp.style.display = 'none'; log("Uplink secured."); return; }
+                if (el === aInp) { aInp.style.display = 'none'; log("Key Synchronized."); return; }
                 
                 el.value = '';
                 if (val.toLowerCase() === 'key') { aInp.style.display = 'block'; return; }
                 
                 log(val, 'user');
                 const key = aInp.value.trim();
-                if (!key) { log("Key Required. Type 'key'.", "err"); return; }
+                if (!key) { log("Key Required.", "err"); return; }
 
                 history.push({ role: "user", parts: [{ text: val }] });
 
                 try {
-                    // Corrected Proxy and API logic
+                    // THE BRIDGE FIX: Using a new proxy link
                     const target = `https://googleapis.com{key}`;
-                    const proxy = `https://allorigins.win{encodeURIComponent(target)}`;
+                    const proxy = `https://corsproxy.io{encodeURIComponent(target)}`;
 
                     const response = await fetch(proxy, {
                         method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ contents: history })
                     });
 
-                    const outerData = await response.json();
-                    const data = JSON.parse(outerData.contents);
+                    const data = await response.json();
                     
-                    // FIXED: Correct indexing [0] for candidates and parts
                     if (data.candidates && data.candidates[0].content) {
                         const aiText = data.candidates[0].content.parts[0].text;
                         log(aiText, 'jarvis');
                         history.push({ role: "model", parts: [{ text: aiText }] });
-                        if (history.length > 12) history = history.slice(-8);
                     } else {
-                        log("API Error: Check your key or internet.", "err");
+                        log("API Error: Check key or internet.", "err");
                     }
                 } catch (err) {
-                    log("Network blocked. Try a different Wi-Fi or key.", "err");
+                    log("Network failure. Wi-Fi restricted.", "err");
                 }
             }
         });
