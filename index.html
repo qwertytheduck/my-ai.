@@ -2,79 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Google Docs</title>
-    <link rel="icon" href="https://gstatic.com">
+    <title>SECURE_STATION_GHOST</title>
     <style>
-        body { background: #000; color: #00d4ff; font-family: 'Courier New', monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
-        #terminal { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; font-size: 1.2rem; }
-        #controls { background: #080808; border-top: 2px solid #00d4ff; padding: 15px; padding-bottom: 25px; }
-        input { background: #000; border: 2px solid #00d4ff; color: #00d4ff; padding: 15px; width: 100%; outline: none; border-radius: 10px; font-size: 1.1rem; }
-        .user-txt { color: #fff; align-self: flex-end; background: #111; padding: 10px; border-radius: 8px; border-right: 4px solid #fff; max-width: 80%; text-align: right; }
-        .jarvis-txt { color: #00d4ff; align-self: flex-start; border-left: 4px solid #00d4ff; padding-left: 10px; line-height: 1.4; max-width: 90%; }
-        .err-msg { color: #ff3333; font-size: 0.9rem; border-left: 4px solid #ff3333; padding-left: 10px; }
+        body { background: #000; color: #00ff41; font-family: 'Courier New', monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
+        #terminal { width: 85%; border: 1px solid #00ff41; padding: 20px; background: #050505; box-shadow: 0 0 30px #00ff41; text-align: center; }
+        .system { color: #00ff41; margin-bottom: 15px; display: block; font-size: 1.2rem; }
+        .btn { background: #00ff41; color: #000; border: none; padding: 12px 25px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 10px; font-family: inherit; }
+        .btn-ghost { background: #111; color: #00ff41; border: 1px solid #00ff41; }
+        .btn:hover { background: #fff; color: #000; }
     </style>
 </head>
-<body>
-<div id="terminal"><span class="jarvis-txt">[SYSTEM]: BRIDGE UPLINK ACTIVE. DISGUISE: ENABLED.</span></div>
-<div id="controls">
-    <input type="password" id="api-key" placeholder="PASTE KEY" style="display:none; margin-bottom:10px;">
-    <input type="text" id="user-input" placeholder="COMMAND..." autocomplete="off">
+<body onclick="activateShield()">
+
+<div id="terminal">
+    <span class="system">[STATUS]: GHOST PROTOCOL STANDBY.</span>
+    <span class="system">[SECURITY]: UNAUTHORIZED CLOSURE BLOCKED.</span>
+    <button class="btn" onclick="authorizeExit()">AUTHORIZE EXIT</button>
+    <button class="btn btn-ghost" onclick="toggleGhost()">GHOST MODE</button>
 </div>
 
 <script>
-    const term = document.getElementById('terminal'), uInp = document.getElementById('user-input'), aInp = document.getElementById('api-key');
-    let history = [];
+    let exitAuthorized = false;
+    let isGhost = false;
 
-    function log(msg, type = 'jarvis') {
-        const div = document.createElement('div');
-        div.className = (type === 'err') ? 'err-msg' : type + '-txt';
-        div.innerText = (type === 'user' ? '' : '[JARVIS]: ') + msg;
-        term.appendChild(div);
-        term.scrollTop = term.scrollHeight;
+    // 1. ACTIVATE SHIELD (Required for browser to allow window manipulation)
+    function activateShield() {
+        console.log("Shield Active.");
     }
 
-    [uInp, aInp].forEach(el => {
-        el.addEventListener('keydown', async (e) => {
-            if (e.key === 'Enter') {
-                const val = el.value.trim();
-                if (!val) return;
-                if (el === aInp) { aInp.style.display = 'none'; log("Key Synchronized."); return; }
-                
-                el.value = '';
-                if (val.toLowerCase() === 'key') { aInp.style.display = 'block'; return; }
-                
-                log(val, 'user');
-                const key = aInp.value.trim();
-                if (!key) { log("Key Required.", "err"); return; }
+    // 2. GHOST MODE (Simulates minimization by shrinking the window)
+    function toggleGhost() {
+        isGhost = !isGhost;
+        if (isGhost) {
+            window.resizeTo(200, 200);
+            window.moveTo(0, 0);
+            alert("GHOST MODE: RESIZING WINDOW. CLICK AGAIN TO RESTORE.");
+        } else {
+            window.resizeTo(window.screen.availWidth, window.screen.availHeight);
+        }
+    }
 
-                history.push({ role: "user", parts: [{ text: val }] });
-
-                try {
-                    // THE BRIDGE FIX: Using a new proxy link
-                    const target = `https://googleapis.com{key}`;
-                    const proxy = `https://corsproxy.io{encodeURIComponent(target)}`;
-
-                    const response = await fetch(proxy, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: history })
-                    });
-
-                    const data = await response.json();
-                    
-                    if (data.candidates && data.candidates[0].content) {
-                        const aiText = data.candidates[0].content.parts[0].text;
-                        log(aiText, 'jarvis');
-                        history.push({ role: "model", parts: [{ text: aiText }] });
-                    } else {
-                        log("API Error: Check key or internet.", "err");
-                    }
-                } catch (err) {
-                    log("Network failure. Wi-Fi restricted.", "err");
-                }
+    // 3. THE RECOVERY TRAP (The "about:blank" loop)
+    window.onbeforeunload = function(e) {
+        if (!exitAuthorized) {
+            // Respawn strategy: Open a new window that points back here
+            const recoveryScript = `
+                <html>
+                <body style="background:#000;color:#00ff41;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;">
+                    <div style="text-align:center;">
+                        <h2>RECOVERY INITIATED</h2>
+                        <p>Redirecting to Secure Uplink...</p>
+                        <script>
+                            setTimeout(() => { window.location.href = "${window.location.href}"; }, 300);
+                        <\/script>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            let ghostTab = window.open('about:blank', '_blank');
+            if (ghostTab) {
+                ghostTab.document.write(recoveryScript);
             }
-        });
-    });
+
+            // Modern browser confirmation dialog
+            const warn = "AUTHORIZATION REQUIRED. EXIT DENIED.";
+            (e || window.event).returnValue = warn;
+            return warn;
+        }
+    };
+
+    // 4. AUTHORIZED EXIT
+    function authorizeExit() {
+        exitAuthorized = true;
+        alert("TERMINATION AUTHORIZED.");
+        window.close(); // Only works if the tab was opened via script; otherwise, manually close now.
+    }
+
+    // Persistence: Always keep current location in Local Storage for recovery
+    localStorage.setItem('secure_uplink_url', window.location.href);
 </script>
 </body>
 </html>
